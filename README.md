@@ -12,6 +12,7 @@ A Python tool for transcribing YouTube videos using OpenAI Whisper with GPU acce
 - 📦 Batch processing for multiple videos
 - ⚡ FP16 precision for faster inference
 - 🔧 Configurable model sizes (tiny to large-v3)
+- 📊 Real-time progress bars for download and transcription
 
 ## System Requirements
 
