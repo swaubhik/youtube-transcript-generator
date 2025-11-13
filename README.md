@@ -213,8 +213,6 @@ LOG_LEVEL = "INFO"
 
 ```
 youtube/
-├── .github/
-│   └── copilot-instructions.md
 ├── src/
 │   ├── __init__.py
 │   └── utils/
