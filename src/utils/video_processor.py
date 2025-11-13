@@ -57,7 +57,10 @@ def download_audio(
     output_template = str(output_dir / "%(id)s.%(ext)s")
     
     ydl_opts = {
-        'format': 'bestaudio/best',
+        # Try multiple format options for better compatibility
+        # Prefer m4a audio (format 140) over webm (251) as it has better quality
+        # Fall back to bestaudio if specific formats aren't available
+        'format': 'bestaudio[ext=m4a]/bestaudio/best',
         'postprocessors': [{
             'key': 'FFmpegExtractAudio',
             'preferredcodec': audio_format,
@@ -66,6 +69,12 @@ def download_audio(
         'outtmpl': output_template,
         'quiet': False,
         'no_warnings': False,
+        # Add extractor args to avoid SABR streaming issues
+        'extractor_args': {
+            'youtube': {
+                'player_client': ['android', 'web'],
+            }
+        },
     }
     
     logger.info(f"Downloading audio from: {url}")
