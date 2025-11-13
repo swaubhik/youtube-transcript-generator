@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Optional, Dict
 
 from yt_dlp import YoutubeDL
+from tqdm import tqdm
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +57,25 @@ def download_audio(
     # Generate output template
     output_template = str(output_dir / "%(id)s.%(ext)s")
     
+    # Progress hook for download
+    def progress_hook(d):
+        if d['status'] == 'downloading':
+            if 'total_bytes' in d:
+                total = d['total_bytes']
+                downloaded = d.get('downloaded_bytes', 0)
+                pbar.total = total
+                pbar.n = downloaded
+                pbar.refresh()
+            elif 'total_bytes_estimate' in d:
+                total = d['total_bytes_estimate']
+                downloaded = d.get('downloaded_bytes', 0)
+                pbar.total = total
+                pbar.n = downloaded
+                pbar.refresh()
+        elif d['status'] == 'finished':
+            if hasattr(progress_hook, 'pbar'):
+                pbar.close()
+    
     ydl_opts = {
         # Try multiple format options for better compatibility
         # Prefer m4a audio (format 140) over webm (251) as it has better quality
@@ -67,23 +87,28 @@ def download_audio(
             'preferredquality': audio_quality,
         }],
         'outtmpl': output_template,
-        'quiet': False,
-        'no_warnings': False,
+        'quiet': True,
+        'no_warnings': True,
         # Add extractor args to avoid SABR streaming issues
         'extractor_args': {
             'youtube': {
                 'player_client': ['android', 'web'],
             }
         },
+        'progress_hooks': [progress_hook],
     }
     
     logger.info(f"Downloading audio from: {url}")
+    
+    # Create progress bar
+    pbar = tqdm(total=0, unit='B', unit_scale=True, desc="Downloading")
     
     with YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
         video_id = info['id']
         audio_path = output_dir / f"{video_id}.{audio_format}"
     
+    pbar.close()
     logger.info(f"Audio downloaded to: {audio_path}")
     return str(audio_path)
 

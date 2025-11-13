@@ -11,6 +11,7 @@ from typing import Optional, List
 import whisper
 import torch
 from yt_dlp import YoutubeDL
+from tqdm import tqdm
 
 import config
 from src.utils.logger import setup_logger
@@ -89,7 +90,17 @@ class YouTubeTranscriber:
         if language:
             options["language"] = language
         
-        result = self.model.transcribe(audio_path, **options)
+        # Add progress bar callback
+        with tqdm(total=100, desc="Transcribing", unit="%", bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt}') as pbar:
+            def progress_callback(progress_dict):
+                # Update progress bar based on Whisper's internal progress
+                if 'progress' in progress_dict:
+                    pbar.n = int(progress_dict['progress'] * 100)
+                    pbar.refresh()
+            
+            result = self.model.transcribe(audio_path, **options)
+            pbar.n = 100
+            pbar.refresh()
         
         logger.info(f"Transcription complete. Detected language: {result.get('language', 'unknown')}")
         return result
@@ -98,7 +109,8 @@ class YouTubeTranscriber:
         self,
         url: str,
         output_formats: List[str] = config.OUTPUT_FORMATS,
-        keep_audio: bool = False
+        keep_audio: bool = False,
+        show_progress: bool = True
     ) -> dict:
         """
         Download and transcribe a YouTube video
@@ -107,6 +119,7 @@ class YouTubeTranscriber:
             url: YouTube video URL
             output_formats: List of output formats (txt, srt, vtt, json)
             keep_audio: Whether to keep the downloaded audio file
+            show_progress: Whether to show progress bar
         
         Returns:
             Dictionary with transcription results and metadata
@@ -119,13 +132,28 @@ class YouTubeTranscriber:
             
             logger.info(f"Processing: {video_title}")
             
+            # Create progress bar for the overall process
+            steps = ['Downloading audio', 'Transcribing', 'Saving outputs']
+            if show_progress:
+                pbar = tqdm(total=len(steps), desc="Progress", unit="step")
+            
             # Download audio
+            if show_progress:
+                pbar.set_description("Downloading audio")
             audio_path = download_audio(url, config.DOWNLOADS_DIR)
+            if show_progress:
+                pbar.update(1)
             
             # Transcribe
+            if show_progress:
+                pbar.set_description("Transcribing")
             result = self.transcribe_audio(audio_path)
+            if show_progress:
+                pbar.update(1)
             
             # Save outputs
+            if show_progress:
+                pbar.set_description("Saving outputs")
             output_files = save_transcript(
                 result,
                 video_id,
@@ -133,6 +161,9 @@ class YouTubeTranscriber:
                 config.OUTPUTS_DIR,
                 output_formats
             )
+            if show_progress:
+                pbar.update(1)
+                pbar.close()
             
             # Cleanup
             if not keep_audio:
@@ -151,6 +182,8 @@ class YouTubeTranscriber:
             }
         
         except Exception as e:
+            if show_progress and 'pbar' in locals():
+                pbar.close()
             logger.error(f"Error processing {url}: {e}", exc_info=True)
             raise
     
@@ -172,14 +205,17 @@ class YouTubeTranscriber:
             List of result dictionaries
         """
         results = []
-        for i, url in enumerate(urls, 1):
-            logger.info(f"Processing video {i}/{len(urls)}")
+        
+        # Use tqdm for batch progress
+        for url in tqdm(urls, desc="Processing videos", unit="video"):
             try:
-                result = self.process_youtube_url(url, output_formats, keep_audio)
+                result = self.process_youtube_url(url, output_formats, keep_audio, show_progress=False)
                 results.append(result)
+                tqdm.write(f"✓ Completed: {result['video_title']}")
             except Exception as e:
                 logger.error(f"Failed to process {url}: {e}")
                 results.append({"url": url, "error": str(e)})
+                tqdm.write(f"✗ Failed: {url}")
         
         return results
 
