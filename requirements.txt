@@ -1,0 +1,15 @@
+# Core dependencies for YouTube transcription with Whisper
+openai-whisper>=20231117
+yt-dlp>=2023.11.16
+
+# PyTorch with CUDA support for NVIDIA GPUs
+# For CUDA 11.8 (adjust version based on your CUDA installation)
+torch>=2.1.0
+torchaudio>=2.1.0
+
+# Audio processing
+ffmpeg-python>=0.2.0
+
+# Utilities
+tqdm>=4.66.1
+numpy>=1.24.0

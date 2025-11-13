@@ -1,0 +1,13 @@
+# Outputs Directory
+
+This directory stores the transcription output files.
+
+Supported formats:
+
+- `.txt` - Plain text transcript
+- `.srt` - SubRip subtitle format
+- `.vtt` - WebVTT subtitle format
+- `.json` - Full transcription data with timestamps
+- `.tsv` - Tab-separated values
+
+Output files are named: `{VIDEO_ID}_{VIDEO_TITLE}.{format}`
